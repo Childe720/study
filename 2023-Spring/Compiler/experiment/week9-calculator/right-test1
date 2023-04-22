@@ -1,0 +1,129 @@
+#include <stdio.h>
+#include <iostream>
+#include <stdlib.h>
+#include <ctype.h>
+#include<string>
+using namespace std;
+char token; /* global token variable */
+/*function prototype for recursive calls*/
+int exp(void);
+int term(void);
+int factor(void);
+
+//存放输入的整个表达式
+char* s = new char;
+//存放当前数组s的下标
+int current;
+
+void error(void)
+{
+	fprintf(stderr, "error\n");
+	exit(1);
+}
+void match(char expectedToken)
+{
+	if (token == expectedToken) {
+		token = s[current];
+		//current--;
+	}
+	else error();
+}
+
+//转换字符为整数
+int num( int& current,char* s) {
+	int num = 0;
+	num = token - '0';
+	current--;
+	if (current>=0 && isdigit(s[current])) {
+		num += (s[current] - '0') * 10;
+		current--;
+	}
+	return num;
+}
+
+/*************************
+exp → { addop term } term 
+addop → + | -
+term → { mulop factor } factor
+mulop → *
+factor → )exp( | number
+*************************/
+int main()
+{
+		int result;
+		char a;
+		int i = 0;
+		while (cin.peek() != '\n')  //cin.peek()相当于偷看一眼再放回流中
+		{
+			cin >> a;
+			s[i] = a;
+			i++;
+		}
+		current = i - 1;
+		token = s[current];
+		result = exp();
+		if (current < 0) {
+			printf("Result = %d\n", result);
+		}
+		else error(); /*extraneous chars on line*/
+		//return 0;
+}
+
+int exp(void)
+{
+	int temp = term();
+	while ((token == '+') || (token == '-'))
+		switch (token)
+		{
+		case '+': match('+'); temp += term(); break;
+		case '-': match('-'); temp = term() - temp; break;
+		}
+	return temp;
+}
+int term(void)
+{
+	int temp = factor();
+	while ((token == '*') || (token == '/'))
+	{
+		/*match('*');
+		temp *= factor();*/
+		switch (token)
+		{
+		case '*': match('*'); temp *= factor(); break;
+		case '/': /*match('/'); temp /= factor(); break;*/
+			match('/');
+			if (temp == 0) {
+				error();
+				break;
+			}
+			else {
+				temp = (factor())/temp; break;
+			}
+		}
+	}
+	return temp;
+}
+int factor(void)
+{
+	int temp;
+	if (token == ')')
+	{
+		current--;
+		match(')'); 
+		temp = exp(); 
+		match('(');
+		token = s[current];
+		current--;
+	}
+	else {
+		if (isdigit(token))
+		{
+			temp = num(current, s);
+			token = s[current];
+			current--;
+		}
+		else error();
+	}
+	return temp;
+}
+
