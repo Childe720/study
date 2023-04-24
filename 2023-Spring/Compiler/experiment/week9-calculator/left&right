@@ -1,0 +1,267 @@
+#include <stdio.h>
+#include <iostream>
+#include <stdlib.h>
+#include <ctype.h>
+#include<string>
+using namespace std;
+char token; /* global token variable */
+/*function prototype for recursive calls*/
+int exp(char* op, int& o);
+int term(char* op, int& o);
+int factor(char* op, int& o);
+
+int expRight(char* op, int& o);
+int termRight(char* op, int& o);
+int factorRight(char* op, int& o);
+
+//存储三个整数的值和下标
+int NUM[3];
+int N;
+
+bool flag = true;
+
+void error(void)
+{
+	fprintf(stderr, "error\n");
+	flag = false;
+	//exit(1);
+}
+
+void match(char expectedToken,char *op,int &o)
+{
+	if (token == expectedToken) {
+		token = op[o];
+		o++;
+	}
+	else error();
+}
+
+void matchRight(char expectedToken, char* op, int& o)
+{
+	if (token == expectedToken) {
+		token = op[o];
+		o--;
+	}
+	else error();
+}
+
+int main() {
+	//left
+	for (int subscript = 0; subscript < 100; subscript++) {
+		flag = true;
+		NUM[3] = 0;
+		N = 0;
+
+		//假设数字占一位，一共有7位：(A+B)+C的形式
+		//注意此处，因为char最后的结尾默认为'/0'所以要多留一位来存储
+		char op[8] = { '0' };
+
+		//控制op数组的下标
+		int o = 0;
+		int kuohao = rand() % 2;
+		switch (kuohao) {
+		case 0: {
+			op[0] = '(';
+			op[4] = ')';
+			op[1] = op[3] = op[6] = 'n';
+			for (int x = 2; x < 6;x++ ) {
+				if (x == 2 || x == 5) {
+					int fuhao = rand() % 4;
+					switch (fuhao) {
+					case 0: {
+						op[x] = '+';
+						break;
+					}
+					case 1: {
+						op[x] = '-';
+						break;
+					}
+					case 2: {
+						op[x] = '*';
+						break;
+					}
+					case 3: {
+						op[x] = '/';
+						break;
+					}
+					}
+				}
+			}
+			break;
+		}
+		case 1: {
+			op[2] = '(';
+			op[6] = ')';
+			op[0] = op[3] = op[5] = 'n';
+			for (int x = 1; x <5;x++) {
+				if (x == 1 || x == 4) {
+					int fuhao = rand() % 4;
+					switch (fuhao) {
+					case 0: {
+						op[x] = '+';
+						break;
+					}
+					case 1: {
+						op[x] = '-';
+						break;
+					}
+					case 2: {
+						op[x] = '*';
+						break;
+					}
+					case 3: {
+						op[x] = '/';
+						break;
+					}
+					}
+				}
+			}
+			break;
+		}
+		}
+		printf(op);
+		printf("\n");
+		//左结合
+		int leftResult;
+		token = op[o];
+		o++;
+		leftResult = exp(op, o);
+		if ((o > 6) && flag) {
+			printf("\n");
+			printf("left:\n");
+			printf("leftResult = %d\n", leftResult);
+		}
+		else error(); /*extraneous chars on line*/
+		//return 0;
+		
+
+		//右结合
+		int rightResult;
+		N = 2;
+		//操作数数组重新开始遍历
+		o = 6;
+		token = op[o];
+		o--;
+		rightResult = expRight(op, o);
+		if ((o < 0) && flag) {
+			printf("right:\n");
+			printf("rightResult = %d\n", rightResult);
+		}
+		else error();
+	}
+}
+
+int exp(char* op, int& o)
+{
+	int temp = term(op, o);
+	while ((token == '+') || (token == '-'))
+		switch (token)
+		{
+		case '+': match('+', op, o); temp += term(op, o); break;
+		case '-': match('-', op, o); temp -= term(op, o); break;
+		}
+	return temp;
+}
+int term(char* op, int& o)
+{
+	int temp = factor(op, o);
+	while ((token == '*') || (token == '/'))
+	{
+		/*match('*');
+		temp *= factor();*/
+		switch (token)
+		{
+		case '*': match('*', op, o); temp *= factor(op, o); break;
+		case '/': /*match('/'); temp /= factor(); break;*/
+			match('/', op, o);
+			int tmp1 = factor(op, o);
+			if (tmp1 == 0) {
+				error();
+				break;
+			}
+			else {
+				temp /= tmp1; break;
+			}
+		}
+	}
+	return temp;
+}
+int factor(char* op, int& o)
+{
+	int temp = 0;
+	if (token == '(')
+	{
+		match('(',op,o); temp = exp(op, o); match(')',op,o);
+	}
+	else
+		if (token == 'n')
+		{
+			temp = rand() % 100 + 1;
+			cout << temp << " ";
+			NUM[N] = temp;
+			N++;
+			token = op[o];
+			o++;
+		}
+		else error();
+	return temp;
+}
+
+
+//right
+int expRight(char* op, int& o)
+{
+	int temp = termRight(op, o);
+	while ((token == '+') || (token == '-'))
+		switch (token)
+		{
+		case '+': matchRight('+', op, o); temp += termRight(op, o); break;
+		case '-': matchRight('-', op, o); temp = termRight(op, o) - temp; break;
+		}
+	return temp;
+}
+int termRight(char* op, int& o)
+{
+	int temp = factorRight(op, o);
+	while ((token == '*') || (token == '/'))
+	{
+		/*match('*');
+		temp *= factor();*/
+		switch (token)
+		{
+		case '*': matchRight('*', op, o); temp *= factorRight(op, o); break;
+		case '/': /*match('/'); temp /= factor(); break;*/
+			matchRight('/', op, o);
+			if (temp == 0) {
+				error();
+				break;
+			}
+			else {
+				temp = (factorRight(op, o)) / temp; break;
+			}
+		}
+	}
+	return temp;
+}
+int factorRight(char* op, int& o)
+{
+	int temp = 0;
+	if (token == ')')
+	{
+		matchRight(')', op, o);
+		temp = expRight(op, o);
+		matchRight('(', op, o);
+
+	}
+	else {
+		if (token == 'n')
+		{
+			temp = NUM[N];
+			N--;
+			token = op[o];
+			o--;
+		}
+		else error();
+	}
+	return temp;
+}
