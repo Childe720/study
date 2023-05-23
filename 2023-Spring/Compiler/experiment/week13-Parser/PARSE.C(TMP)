@@ -1,0 +1,437 @@
+/****************************************************/
+/* File: parse.c                                    */
+/* The parser implementation for the TINY compiler  */
+/* Compiler Construction: Principles and Practice   */
+/* Kenneth C. Louden                                */
+/****************************************************/
+
+#include "globals.h"
+#include "util.h"
+#include "scan.h"
+#include "parse.h"
+
+static TokenType token; /* holds current token */
+
+/* function prototypes for recursive calls */
+static TreeNode* stmt_sequence(void);
+static TreeNode* statement(void);
+static TreeNode* if_stmt(void);
+static TreeNode* repeat_stmt(void);
+static TreeNode* assign_stmt(void);
+static TreeNode* read_stmt(void);
+static TreeNode* write_stmt(void);
+static TreeNode* un_exp(void);
+static TreeNode* simple_exp(void);
+static TreeNode* term(void);
+static TreeNode* factor(void);
+static TreeNode* var_decl(void);
+static TreeNode* fun_decl(void);
+
+static void syntaxError(char* message)
+{
+    fprintf(listing, "\n>>> ");
+    fprintf(listing, "Syntax error at line %d: %s", lineno, message);
+    Error = TRUE;
+}
+
+static void match(TokenType expected)
+{
+    if (token == expected) token = getToken();
+    else {
+        syntaxError("unexpected token -> ");
+        printToken(token, tokenString);
+        fprintf(listing, "      ");
+    }
+}
+
+TreeNode* stmt_sequence(void)
+{
+    TreeNode* t = statement();
+    TreeNode* p = t;
+    while ((token != ENDFILE) && (token != END) &&
+        (token != ELSE) && (token != UNTIL))
+    {
+        //这里是不是遇到分号就新建结点
+        TreeNode* q;
+        match(SEMI);
+        q = statement();
+        if (q != NULL) {
+            if (t == NULL) t = p = q;
+            else /* now p cannot be NULL either */
+            {
+                p->sibling = q;
+                p = q;
+            }
+        }
+    }
+    return t;
+}
+
+TreeNode* statement(void)
+{
+    TreeNode* t = NULL;
+    switch (token) {
+    case IF: t = if_stmt(); break;
+    case REPEAT: t = repeat_stmt(); break;
+    case ID: t = assign_stmt(); break;
+    case READ: t = read_stmt(); break;
+    case WRITE: t = write_stmt(); break;
+        //以下为新增的内容
+    case VAR: t = var_decl(); break;//变量声明
+    case FUNCTION: t = fun_decl(); break;//函数声明
+        
+    default: syntaxError("unexpected token -> ");
+        printToken(token, tokenString);
+        token = getToken();
+        break;
+    } /* end case */
+    return t;
+}
+
+TreeNode* if_stmt(void)
+{
+    TreeNode* t = newStmtNode(IfK);
+    match(IF);
+    if (t != NULL) t->child[0] = un_exp();
+    match(THEN);
+    if (t != NULL) t->child[1] = stmt_sequence();
+    if (token == ELSE) {
+        match(ELSE);
+        if (t != NULL) t->child[2] = stmt_sequence();
+    }
+    match(END);
+    return t;
+}
+
+TreeNode* repeat_stmt(void)
+{
+    TreeNode* t = newStmtNode(RepeatK);
+    match(REPEAT);
+    if (t != NULL) t->child[0] = stmt_sequence();
+    match(UNTIL);
+    if (t != NULL) t->child[1] = un_exp();
+    return t;
+}
+
+TreeNode* assign_stmt(void)
+{
+    TreeNode* t = newStmtNode(AssignK);
+    if ((t != NULL) && (token == ID))
+        t->attr.name = copyString(tokenString);
+    match(ID);
+    match(ASSIGN);
+    if (t != NULL) t->child[0] = un_exp();
+    return t;
+}
+
+TreeNode* read_stmt(void)
+{
+    TreeNode* t = newStmtNode(ReadK);
+    match(READ);
+    if ((t != NULL) && (token == ID))
+        t->attr.name = copyString(tokenString);
+    match(ID);
+    return t;
+}
+
+TreeNode* write_stmt(void)
+{
+    TreeNode* t = newStmtNode(WriteK);
+    match(WRITE);
+    if (t != NULL) t->child[0] = un_exp();
+    return t;
+}
+
+//条件判断语法树
+TreeNode* un_exp(void)
+{
+    TreeNode* t = simple_exp();
+    //小于或等于条件
+    if ((token == LT) || (token == EQ)) {
+        TreeNode* p = newExpNode(OpK);
+        if (p != NULL) {
+            p->child[0] = t;
+            p->attr.op = token;
+            t = p;
+        }
+        match(token);
+        if (t != NULL)
+            t->child[1] = simple_exp();
+    }
+    return t;
+}
+
+TreeNode* simple_exp(void)
+{
+    TreeNode* t = term();
+    while ((token == PLUS) || (token == MINUS))
+    {
+        TreeNode* p = newExpNode(OpK);
+        if (p != NULL) {
+            p->child[0] = t;
+            p->attr.op = token;
+            t = p;
+            match(token);
+            t->child[1] = term();
+        }
+    }
+    return t;
+}
+
+TreeNode* term(void)
+{
+    TreeNode* t = factor();
+    while ((token == TIMES) || (token == OVER))
+    {
+        TreeNode* p = newExpNode(OpK);
+        if (p != NULL) {
+            p->child[0] = t;
+            p->attr.op = token;
+            t = p;
+            match(token);
+            p->child[1] = factor();
+        }
+    }
+    return t;
+}
+
+TreeNode* factor(void)
+{
+    TreeNode* t = NULL;
+    switch (token) {
+    case NUM:
+        t = newExpNode(ConstK);
+        if ((t != NULL) && (token == NUM))
+            t->attr.val = atoi(tokenString);
+        match(NUM);
+        break;
+    case ID:
+        t = newExpNode(IdK);
+        if ((t != NULL) && (token == ID))
+            t->attr.name = copyString(tokenString);
+        match(ID);
+        break;
+        //左括号
+    case LPAREN:
+        match(LPAREN);
+        t = un_exp();
+        match(RPAREN);
+        break;
+    default:
+        syntaxError("unexpected token -> ");
+        printToken(token, tokenString);
+        token = getToken();
+        break;
+    }
+    return t;
+}
+
+//变量声明语句
+//TreeNode* var_decl() {
+//    TreeNode* t = NULL, * tmp = NULL, * varDeclList = NULL;
+//    match(VAR);
+//    //    printf("VAR: %s\n", tokenString); // 输出变量类型
+//    if (token == ID) {
+//        while (token == ID) {// 处理一个多变量声明语句中的每个变量
+//            int hasNext = 0; // 新增变量hasNext，用于判断是否还有下一个变量声明
+//            if (varDeclList != NULL) {
+//                tmp = varDeclList;
+//                while (tmp->sibling != NULL) tmp = tmp->sibling; // 找到上一次生成的最后一个ID节点
+//            }
+//            //            printf("  ID: %s\n", tokenString); // 输出变量名
+//            match(ID);
+//            t = newStmtNode(IDK);
+//            if (t != NULL) {
+//                //t->attr.name = copyString(tokenString);
+//                //match(ID);
+//                //t->attr.var = copyString(tokenString);// 变量类型，如 int 或 float
+//                t->attr.name = copyString(tokenString);
+//                t->attr.var = copyString("var"); // 设置变量类型为int
+//                t->type = VAR; // 设置变量类型为INT
+//                if (token == LBRACK) {
+//                    //printf("  ARRAY: %s\n", t->attr.name); // 输出数组名
+//                    match(LBRACK);
+//                    if ((t != NULL) && (token == NUM)) {
+//                        // 数组长度
+//                        t->child[0] = newExpNode(ConstK);
+//                        t->child[0]->attr.val = atoi(tokenString);
+//                        //    printf("  SIZE: %d\n", t->child[0]->attr.val); // 输出数组大小
+//                    }
+//                    match(NUM);
+//                    match(RBRACK);
+//                }
+//                t->child[1] = NULL;// 将子节点赋值为 NULL
+//            }
+//            else {
+//                syntaxError("out of memory");
+//            }
+//            if (tmp != NULL) {
+//                tmp->sibling = t;// 将新节点接到上一个IDK节点之后
+//            }
+//            else {
+//                varDeclList = t;
+//            }
+//            if (token == COMMA) {
+//                match(COMMA);
+//                hasNext = 1; // 还有下一个变量声明
+//            }
+//            // 将else改为if语句，判断是否还有下一个变量声明
+//            if (hasNext == 0) {
+//                break;
+//            }
+//        }
+//        match(SEMI);
+//    }
+//    else {
+//        syntaxError("expecting an identifier");
+//    }
+//    t = newStmtNode(DeclK);
+//    if (t != NULL) {
+//        t->attr.name = copyString("DECL");
+//        t->child[0] = varDeclList;
+//    }
+//    else {
+//        syntaxError("out of memory");
+//    }
+//    return t;
+//}
+//变量声明语句
+TreeNode* var_decl() {
+    TreeNode* t = NULL, * tmp = NULL, * varDeclList = NULL;
+    //变量名
+    char* tmps = tokenString;
+    //t->attr.name = copyString(tokenString);
+    match(VAR);
+    //    printf("VAR: %s\n", tokenString); // 输出变量类型
+    if (token == ID) {
+        while (token == ID) {// 处理一个多变量声明语句中的每个变量
+            int hasNext = 0; // 新增变量hasNext，用于判断是否还有下一个变量声明
+            if (varDeclList != NULL) {
+                tmp = varDeclList;
+                while (tmp->sibling != NULL) tmp = tmp->sibling; // 找到上一次生成的最后一个ID节点
+            }
+            //            printf("  ID: %s\n", tokenString); // 输出变量名
+            //match(ID);
+            //t = newStmtNode(IDK);
+            t = newExpNode(IdK);
+            if (t != NULL) {
+                //此处应该是变量名？
+                t->attr.name = copyString(tokenString);
+                match(ID);
+                if (token == LBRACK) {
+                    //printf("  ARRAY: %s\n", t->attr.name); // 输出数组名
+                    match(LBRACK);
+                    if ((t != NULL) && (token == NUM)) {
+                        // 数组长度
+                        t->child[0] = newExpNode(ConstK);
+                        t->child[0]->attr.val = atoi(tokenString);
+                        //    printf("  SIZE: %d\n", t->child[0]->attr.val); // 输出数组大小
+                    }
+                    match(NUM);
+                    match(RBRACK);
+                }
+                t->child[1] = NULL;// 将子节点赋值为 NULL
+            }
+            else {
+                syntaxError("out of memory");
+            }
+            if (tmp != NULL) {
+                tmp->sibling = t;// 将新节点接到上一个IDK节点之后
+            }
+            else {
+                varDeclList = t;
+            }
+            // 逗号
+            if (token == COMMA) {
+                match(COMMA);
+                hasNext = 1; // 还有下一个变量声明
+            }
+            // 将else改为if语句，判断是否还有下一个变量声明
+            if (hasNext == 0) {
+                break;
+            }
+        }
+        //分号
+        match(SEMI);
+    }
+    else {
+        syntaxError("expecting an identifier");
+    }
+    t = newStmtNode(DeclK);
+    if (t != NULL) {
+        //t->attr.name = copyString(tmps);
+        t->child[0] = varDeclList;
+    }
+    else {
+        syntaxError("out of memory");
+    }
+    return t;
+}
+
+//新增函数声明语法
+TreeNode* fun_decl(void)
+{
+    TreeNode* t = NULL;
+    match(FUNCTION);
+    if (token == ID) {
+        t = newStmtNode(FunK);
+        if ((t != NULL) && (token == ID))
+            t->attr.name = copyString(tokenString);
+        match(ID);
+        match(LPAREN);
+        if (token == VAR) { // 判断是否有变量声明
+            if (t != NULL) t->child[0] = var_decl();
+            while (token == COMMA) {
+                match(COMMA);
+                if (t != NULL) t->child[1] = var_decl();
+            }
+        }
+        match(RPAREN);
+        //函数体，因为TINY中{}代表注释，所以用（）来表示函数体
+        match(LPAREN);
+        if (t != NULL) t->child[2] = stmt_sequence();
+        match(RPAREN);
+    }
+    else {
+        syntaxError("unexpected token -> ");
+        printToken(token, tokenString);
+        token = getToken();
+    }
+    return t;
+}
+
+//新增单变量声明的同时赋值
+//TreeNode* var_decl_assign(void)
+//{
+//    TreeNode* t = NULL;
+//    match(VAR);
+//    if (token == ID) {
+//        t = newStmtNode(AssignK);
+//        if ((t != NULL) && (token == ID))
+//            t->attr.name = copyString(tokenString);
+//        match(ID);
+//        match(ASSIGN);
+//        if (t != NULL) t->child[0] = un_exp();
+//    }
+//    else {
+//        syntaxError("unexpected token -> ");
+//        printToken(token, tokenString);
+//        token = getToken();
+//    }
+//    return t;
+//}
+/****************************************/
+/* the primary function of the parser   */
+/****************************************/
+/* Function parse returns the newly
+ * constructed syntax tree
+ */
+TreeNode* parse(void)
+{
+    TreeNode* t;
+    token = getToken();
+    t = stmt_sequence();
+    if (token != ENDFILE)
+        syntaxError("Code ends before file\n");
+    return t;
+}
