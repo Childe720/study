@@ -1,0 +1,95 @@
+目录
+	绪论
+1.1研究背景与意义
+1000
+1.2国内外研究现状及存在的问题2000
+1.2.1分子表示
+1.2.2数据集
+1.2.3分子生成方法研究现状
+我打算抄那三个的，再加上蛋白质口袋那里的，感觉比较有用。
+想了一下，这样写的话，感觉内容太爆炸了，所以我的观点是先把基于蛋白质口袋的那里写了，因为这里如果用在第二章或是单独成为这里的一个分支都是可行的，所以我觉得可以尝试一下。
+1000
+1.3本文的研究内容
+1.4本文的组织架构
+1.5本章总结
+
+第二部分来阐述名词解释问题3000
+我看见华中科技大学（基于深度学习的类药性分子生成模型优化研究）那篇详细介绍了smiles分子编码的名词解释，从化学角度讲了好多，到时候字数不够，凑字数可以看看。
+
+采用自回归模型，采用多头交互注意力机制，采用多种损失函数的对比实验，采用属性控制（掩码机制），拉普拉斯编码
+评估标准介绍：
+那几个化学评估标准
+
+1.1研究背景与意义
+药物，作为我们生活中的重要一环，不仅在治疗疾病方面发挥着至关重要的作用，更是人类健康与生命守护的坚实后盾。在后疫情时代的今天，越来越多的人意识到药物以及药物研发的重要性。从上古时代的神农尝百草到今天的生物制药、基因治疗，药物的发展历程见证了人类对于健康和生命的不断探索与追求。随着计算机科学的进步与发展，药物的发现过程也随之高速发展。一般而言，药物分为两种类型：抗体类药物和小分子药物。目前，普遍认为小分子药物比抗体类药物具有更多的优势。所以，小分子药物的研发已经成为了当前的一个重要研究方向。通常而言，小分子药物从研发到上市大概需要以下几个过程：药物靶点的选择和确认、苗头化合物的筛选、先导化合物的发现、候选药物的确定、临床前和临床研究、上市。整个过程可能需要12-15年，成本超过了10亿美元。传统的计算机辅助药物设计技术(CADD) [1,2]，如高通量筛选(high-throughput screening) [3]和虚拟筛选(virtual screening) [4]，效率较低且成本高昂。尽管花费了大量的人力物力，最终产生的满足市场需求的小分子药物少且几率较低。随着医疗技术的不断进步，药物的研发如何跟上人类的需求成为了一个亟待解决的问题。然而，小分子药物的化学空间包含{10}^{30}~{10}^{60}个小分子[5]，但是与治疗相关的却只在其中占有{10}^8个[6]。在如此广阔的化学空间中找到合适的小分子化合物十分困难。传统的基于QSAR或基于对接的VS通常倾向于从现有的化学库中搜索具有所需性质的分子。相比之下，从头药物设计生成分子旨在通过从头生成具有所需性质的新分子来探索化学空间，以补充现有的化学库[7]。
+随着深度学习的快速发展，已经被广泛使用到许多领域，大数据和高性能计算能力使人工智能超越了传统的暴力力量[8]。近年来，各种基于深度学习的从头药物设计算法已经开发出来，为药物研发提供了广阔的前景。深度学习在药物发现中的成功应用被《麻省理工学院技术评论》选为2020年十大突破性技术之一[7]，许多基于深度学习的从头生成分子已经被提出。与深度学习在虚拟筛选中的判别作用相比，基于深度学习的生成模型本质上可以被视为在巨大的化学空间中检测具有理想性质的化合物的探索者，它应用优化策略来接近所需的分子性质。基于深度学习的生成模型可以实现总结和提取化学空间中现有分子的性质或结构特征，然后将其转化为新的支架的过程，也称为反向QSAR过程[7]。
+其中，在基于深度学习生成分子的方法中，一般又分为了两种方法——基于配体的分子生成方法和基于蛋白质的分子生成方法。
+基于配体的药物设计（LBDD），也称作直接药物设计，是指在生物靶点结构未知的情况下，通过研究与靶点具有特异性结合配体的结构信息，发现先导化合物的方法。即通过学习现有小分子之间结构形成的隐藏化学规则，产生不同于它们的新分子。通常，基于配体的方法利用三种类型的生成模型：包括递归神经网络（RNN）[9]、生成对抗性网络（GAN）[10]和变分自动编码器（VAE）[11]。基于配体的方法可以产生具有良好物理化学性质的新型化合物。然而，由于它们在生成分子时不考虑蛋白质信息或考虑较少的蛋白质信息，因此不能保证生成的分子对新的蛋白质靶标具有所需的结合亲和力[12]。
+基于结构的药物设计 (Structure‐based drug design) (SBDD)，广义上讲是基于配体结构和受体蛋白结构的药物设计的统称；狭义上讲就是基于受体结构的药物设计，即依据与药物作用的靶点（广义上的受体，如酶、受体、离子通道、抗原、核酸、多糖等）的三维结构，运用分子识别原理（互补性），设计对受体进行调控的先导物，或根据已有药物作用力大小和构效关系判断来推测新化合物的药效，达到发现活性分子的目的，也称为间接药物设计。为了保证生成的新分子对蛋白质靶标具有所需的结合亲和力，以蛋白质口袋导向作为属性控制的小分子生成方法被越来越多地提及[12]。
+1.2国内外研究现状
+1.2.1分子表示
+为了在深度神经网络中对小分子进行表示，必须首先用数字描述符对小分子进行特征化。目前，常见的一些小分子描述符主要包括以下几种：
+	指纹（FP）。分子指纹描述具有二元串的分子的特定亚结构的存在或不存在[13]。
+	基于序列的分子表示。最常用的分子序列描述符是简化分子输入线输入系统（SMILES）[14]，其具有多功能性和可解释性。SMILES的每个原子都表示为各自的ASCII符号，而化学键、支化和立体化学由特定的符号表示。Transformers[15]是一个强大的神经模型，用于处理序列和建模每个令牌之间的复杂关系。我们可以首先将基于序列的分子描述符拆分为一系列表示原子、键的标记，然后在这些标记上应用转换器[16]。
+	基于2D图的分子表示。分子可以自然地表示为2D图，原子作为节点，键作为边。每个节点和边也可以携带表示原子类型、手性和键类型、方向的特征向量。GNN和Transformer的一些混合架构[17]也可以用来捕捉分子图的拓扑结构。
+	基于3D结构的分子表示。三维几何表示分子原子在三维空间中的空间排列，其中每个原子与其类型和坐标以及一些可选的几何属性（如速度）相关联。使用3D几何的优点是构象信息对许多分子性质，特别是量子性质至关重要。此外，还可以直接利用立体化学信息，例如给定3D几何形状的手性。目前许多方法已经在3D几何结构上开发了消息传递机制，使图表示能够遵循某些物理符号，例如平移和旋转的等变。这也成为了未来分子生成方向的一个比较热门的分子表示方法。
+1.2.2数据集
+数据，在深度学习中是非常重要的一环，在从头药物分子设计研究中，我们经常采用的数据集大概有以下几个，他们的分类总结如下：
+	首先是综合型数据库。综合类数据库通常包含了生物活性、化学结构和物理性质等多种信息，常见的这个类型的数据库包括了ZINC[18,19]、ChEMBL[20]、PubChem[21]和DrugBank[22,23]等。其中，DrugBank中药物的数据字段可以链接到PubChem[24]等其他数据库。
+	第二个是合并后的数据库。这些数据库是化学数据集，通过组合和筛选现有的数据库，不仅可以用于生成分子，还可以用于验证作为基准的各种机器学习方法。MOSES平台[25]通过一些规则筛选ZINC，并将最终数据集分为三组，即训练集、测试集和支架集，以确保分子的多样性。还有任务专用数据库，用于与药物发现相关的其他任务。
+	最后是化学空间数据集，以类似于枚举化学空间的方式包含特定原子组成的化合物。例如，从GDB[26,27]中提取的量子机器（QM）[28,29]，包含由C、H、O、N、F元素组成的分子及其量子化学性质。
+1.2.3基于口袋的分子生成方法研究现状
+口袋通常是蛋白质表面的凹陷区域，可以与其他分子（例如药物分子）发生结合作用。基于口袋的模型，在模型中对结合位点的形状和物理化学性质进行编码，或者使用结合评分函数评估生成的结构异构体。蛋白质口袋可以用 3D 分子图形、体素网格等进行表示，并且可以分别使用图形 （GNN） 或卷积神经网络 （CNN） 进行处理。这样，在某些情况下，可以在不重新训练模型的情况下替换靶蛋白，并且可以将模型的应用直接转移到另一个靶标上。
+当生成的小分子编码为序列形式（以SMILES为主）的时候，近年来提出了以下生成模型。Xu等人[30]将口袋中的键值编码为粗粒原子库仑矩阵中的特征值，并利用RNN[9]条件生成模型生成化合物，输出SMILES字符串。作为这种方法的延伸，Zhang[31]等人使用LSTM网络，通过在对接过程中获得的配体-蛋白质复合物相互作用的指纹图谱，以产生靶向化合物，获得SMILES字符串输出。Zheng[32] 等人使用蛋白质编码作为优化上下文，实现了支架跳跃的 transformer 架构。该方法使用TAPE将蛋白质编码在氨基酸链中，TAPE也是一种变压器结构。Skalic[33]等人使用半三维方法来生成化合物，使用形状字幕网络解码SMILES链，并仅对分子的形状进行编码和解码。3D CNN 编码分子的形状和化学性质[33]。蛋白质也可以用同样的方式表示，以查看配体是否与特定蛋白质的描述相匹配。在已发表的其他论文中，BicycleGAN用于为单输入蛋白生成不同的配体。
+当生成的分子为3D形状的时候，主要有以下几个模型被提出并广泛谈论。第一个提出生成由受体结合位点驱动的 3D 复杂结构的深度生成模型的是Ragoza, Masuda, Koes[34]。他们开始使用了由 CNN 变换的原子密度网络在潜在空间中编码 3D 结合分子结构（包括目标结合口袋）。每种原子类型都有单独的通道，它们在 3D 网格中被以相当于连续高斯的密度进行编码。它使用了一种结合光束搜索和梯度下降的算法，从生成的网格中获取有效分子，以返回给原子密度网格最匹配的原子类型和坐标集。最终，它们通过键的适当分配连接成有效的分子。接着Luo等人[35]开发了一种 3D 生成模型，该模型可以预测结合区域中原子存在的可能性。 通过K-NN算法连接的原子图将蛋白质和配体的原子编码在图中。此外，为了确认这个立体空间中原子分布的概率密度，采用了旋转不变的GNNs。然后采用自回归算法，通过密度估计，从模型中枚举生成的分子。与Luo等人考虑得不同，Li等人[36]没有编码结合口袋，而是将对接直接纳入对生成分子的评估中。他们开发了一种由两个网络组成的自回归方法：一个是有状态编码器，一个是策略网络。状态编码器是一个GNN，它形成部分组成的分子的表示，而策略网络则决定将哪些化学部分添加到分子中。具有对接评分的 MCTS 用作评分函数对分子进行采样。Peng等人[37]开发了Pocket2Mol，这是一种基于E（3）-等变神经网络的高效系统。它将采样算法与GNN相结合，捕获靶标结合口袋的化学和几何约束，以生成一种新的3D口袋驱动配体候选物。Pocket2Mole 使用自回归策略来研究基于现有原子的口袋内给定空间片段的特定原子或键类型的概率分布。其中自回归采用的思想是将部分药物随机掩蔽，通过模型训练来预测剩余的片段。
+1.3主要工作内容
+1.4论文组织架构
+本文主要针对基于深度学习的蛋白质口袋导向分子生成任务，设计模型并生成具有一定属性控制的药物小分子。全文一共分为五个章节，每部分的内容总结如下：
+第一章是绪论。章节首先介绍了当前药物分子筛选存在的困难，提出了当前讨论广泛的基于深度学习生成分子的方法，同时，为控制生成的分子能够和受体蛋白较好地结合，提出了以蛋白质口袋为属性控制的导向分子生成方法，具有深远的实际意义。接着，文章介绍了分子信息化的基础内容，包括小分子常见的表征方式，列举了该领域常用的数据集，然后介绍了已有的基于不同模型的蛋白质口袋的分子生成研究现状，进而引出自己的研究课题。
+
+第二章是介绍文章主要使用到的技术。重点从自回归模型展开，介绍了分子生成的条件模型。内容包括自回归
+
+第三章是对基于深度学习的蛋白质口袋导向分子生成模型的构建。首先介绍了蛋白质和小分子二者的嵌入，蛋白质口袋图的构建，及采用的拉普拉斯编码。接下来阐述了如何进行的属性控制。之后介绍了分子生成采用的解码器，以及多头注意力机制的运用。然后介绍了在口袋导向分子生成方面常用的数据集。最后从模型训练与优化策略出发，介绍了模型的损失函数与优化器的选择。
+第四章是实验结果与分析。本章首先介绍了生成分子的评估指标。接着用上述评估指标对生成的分子进行评估，并对实验结果进行展示和分析。此外，对比分析了smiles和selfies两种编码方式产生的分子。
+第五章是总结和展望。本章总结了本文的研究方法和研究结果，以及实验课题的研究价值与意义。最后总结了本研究存在的不足，并对可能的改进策略提出思考，对未来的研究方向进行了展望。
+
+
+参考文献
+
+[1] 唐贇,蒋华良,陈凯先等.计算机辅助药物设计正在走向成功[J].生命科学,1996,(04):5-9.
+[2] 嵇汝运,戎锁宝,陈凯先.计算机辅助药物设计研究[J].中国药学杂志,1997,(11):36-39. 
+[3] Bajorath J. Integration of virtual and high-throughput screening[J]. Nature Reviews Drug Discovery, 2002, 1(11): 882-894.
+[4] Unterthiner T, Mayr A, Klambauer G, et al. Deep learning as an opportunity in virtual screening[C]. Proceedings of the Deep Learning Workshop at NIPS, 2014: 1-9.
+[5] Polishchuk PG, Madzhidov TI, Varnek A.. Estimation of the size of drug-LIKE chemical space based on GDB-17 data. J Comput Aided Mol Des 2013;27:675–9. 10.1007/s10822-013-9672-4.23963658. 
+[6] Polishchuk PG, Madzhidov TI, Varnek A. Estimation of the size of drug-like chemical space based on GDB-17 data. J Comput Aided Mol Des 2013; 27(8): 675–9.
+[7] 	Mingyang Wang, Zhe Wang, Huiyong Sun, Jike Wang, Chao Shen, Gaoqi Weng, Xin Chai, Honglin Li, Dongsheng Cao, Tingjun Hou, Deep learning approaches for de novo drug design: An overview, Current Opinion in Structural Biology, Volume 72, 2022, Pages 135-144, ISSN 0959-440X.
+[8] Rifaioglu AS, Atas H, Martin MJ, et al. Recent applications of deep learning and machine intelligence on in silico drug discovery: methods, tools and databases. Brief Bioinform 2019; 20(5): 1878–912.
+[9] Graves A. Generating Sequences With Recurrent Neural Networks.arXiv preprint arXiv:1308.0850.2014.
+[10] Creswell A, White T, Dumoulin V. et al. Generative adversarial networks: An overview. IEEE Signal Process Mag 35:53–65. 10.1109/MSP.2017.2765202.
+[11] Kingma DP, Welling M. Auto-Encoding Variational Bayes. arXiv preprint arXiv:1312.6114. 2022.
+[12] Li, Jia-Ning et al. CProMG: controllable protein-oriented molecule generation with desired binding affinity and drug-like properties. Bioinformatics (Oxford, England) vol. 39,39 Suppl 1 (2023): i326-i336.
+[13] Jun Xia and Yanqiao Zhu and Yuanqi Du and Stan Z. Li. A Systematic Survey of Chemical Pre-trained Models. arXiv preprint arXiv:2210.16484. 2023.
+[14] D. Weininger. SMILES, A Chemical Language and Information System. 1. Introduction to Methodology and Encoding Rules. J. Chem. Inf. Comput. Sci., 1988.
+[15] A. Vaswani, N. Shazeer, et al. Attention is All You Need. In NIPS, 2017.
+[16] S. Chithrananda, G. Grand, et al. Chem-BERTa: Large-Scale Self-Supervised Pretraining for Molecular Property Prediction. arXiv.org, October 2020.
+[17] Y. Rong, Y. Bian, et al. Self-Supervised Graph Transformer on Large-Scale Molecular Data. In NeurIPS, 2020.
+[18] Irwin JJ, Sterling T, Mysinger MM, et al. ZINC: a free tool to discover chemistry for biology. J Chem Inf Model 2012; 52(7): 1757–68.
+[19] Sterling T, Irwin JJ. ZINC 15–ligand discovery for everyone. J Chem Inf Model 2015; 55(11): 2324–37.
+[20] Gaulton A, Bellis LJ, Bento AP, et al. ChEMBL: a large-scale bioactivity database for drug discovery. Nucleic Acids Res 2012; 40(D1): D1100–7.
+[21] Kim S, Thiessen PA, Bolton EE, et al. PubChem substance and compound databases. Nucleic Acids Res 2016; 44(D1): D1202–13.
+[22] Wishart DS, Knox C, Guo AC, et al. DrugBank: a comprehensive resource for in silico drug discovery and exploration. Nucleic Acids Res 2006; 34(suppl_1).
+[23] Wishart DS, Feunang YD, Guo AC, et al. DrugBank 5.0: a major update to the DrugBank database for 2018. Nucleic Acids Res 2018; 46(D1): D1074–82. 
+[24] Sun M, Zhao S, Gilvary C, et al. Graph convolutional networks for computational drug development and discovery. Brief Bioinform 2020; 21(3): 919–35.
+[25] Polykovskiy D, Zhebrak A, Sanchez-Lengeling B, et al. Molecular sets (MOSES): a benchmarking platform for molecular generation models. Front Pharmacol 2020; 11.
+[26] Lorenz C Blum and Jean-Louis Reymond. 970 million druglike small molecules for virtual screening in the chemical universe database GDB-13. J Am Chem Soc, 131(25): 8732–3, 2009.
+[27] Ruddigkeit L, Van Deursen R, Blum LC, et al. Enumeration of 166 billion organic small molecules in the chemical universe database GDB-17. Journal of Chemical iInformation and Modeling 2012; 52(11): 2864–75.
+[28] Schütt KT, Arbabzadah F, Chmiela S, et al. Quantum-chemical insights from deep tensor neural networks. Nat Commun 2017; 8(1): 1–8.
+[29] Chmiela S, Tkatchenko A, Sauceda HE, et al. Machine learning of accurate energy-conserving molecular force fields. Sci Adv 2017; 3(5):e1603015.
+[30] M. Xu, T. Ran, H. Chen. De novo molecule design through the molecular generative model conditioned by 3D information of protein binding sites. J Chem Inf Model, 61 (2021), pp. 3240-3254.
+[31] J. Zhang, H. Chen. De novo molecule design using molecular generative models constrained by ligand-protein interactions. J Chem Inf Model, 62 (2022), pp. 3291-3306.
+[32] S. Zheng, Z. Lei, H. Ai, H. Chen, D. Deng, Y. Yang. Deep scaffold hopping with multimodal transformer neural networks. J Cheminform, 13 (2021), pp. 1-15.
+[33] M. Skalic, J. Jiménez, D. Sabbadin, G. Fabritiis. Shape-based generative modeling for de novo drug design. J Chem Inf Model, 59 (2019), pp. 1205-1214.
+[34] M. Ragoza, T. Masuda, D.R. Koes. Generating 3D molecules conditional on receptor binding sites with deep generative models. Chem Sci, 13 (2022), pp. 2701-2713.
+[35] S. Luo, J. Guan, J. Ma, J. Peng. A 3D generative model for structure-based drug design. Adv Neural Inf Process Syst, 34 (2021), pp. 1-11.
+[36] Y. Li, J. Pei, L. Lai. Structure-based de novo drug design using 3D deep generative models. Chem Sci, 12 (2021), pp. 13664-13675.
+[37] X. Peng, S. Luo, J. Guan, Q. Xie, J. Peng, J. Ma. Pocket2Mol: efficient molecular sampling based on 3D protein pockets. Proc Mach Learn Res, 162 (2022), pp. 17644-17655.
